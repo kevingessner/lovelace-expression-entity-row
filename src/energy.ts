@@ -53,6 +53,7 @@ export interface Conversions {
   electricity_price?: number | null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const statisticTypes = [
   "change",
   "last_reset",

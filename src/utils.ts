@@ -54,7 +54,7 @@ export const computeStateDisplay = (
           style: "currency",
           currency: stateObj.attributes.unit_of_measurement,
         });
-      } catch (_err) {
+      } catch {
         // fallback to default
       }
     }

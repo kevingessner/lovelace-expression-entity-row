@@ -1,10 +1,10 @@
-import typescript from 'rollup-plugin-typescript2';
+import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import nodeResolve from '@rollup/plugin-node-resolve';
-import babel from '@rollup/plugin-babel';
 import terser from '@rollup/plugin-terser';
 import serve from 'rollup-plugin-serve';
 import json from '@rollup/plugin-json';
+import babel from '@rollup/plugin-babel';
 
 const dev = process.env.ROLLUP_WATCH;
 
@@ -19,7 +19,7 @@ const serveopts = {
 };
 
 const plugins = [
-  nodeResolve({}),
+  nodeResolve(),
   commonjs(),
   typescript(),
   json(),
@@ -28,16 +28,25 @@ const plugins = [
     babelHelpers: 'bundled',
   }),
   dev && serve(serveopts),
-  !dev && terser(),
+  !dev && terser()
 ];
+
+const onwarn = (warning, warn) => {
+  if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('/node_modules/')) {
+    return;
+  }
+
+  warn(warning);
+};
 
 export default [
   {
     input: 'src/main.ts',
     output: {
-      file: 'dist/energy-entity-row.js',
+      file: './dist/energy-entity-row.js',
       format: 'es',
     },
-    plugins: [...plugins],
+    plugins: [...plugins.filter(Boolean)],
+    onwarn,
   },
 ];
