@@ -12,10 +12,12 @@ import { Conversions, EnergyCollection,
 } from './energy';
 import { SubscribeMixin } from './subscribe-mixin';
 import { computeStateDisplay, createEntityNotFoundWarning, createEntityErrorWarning } from './utils';
+import { ExpressionConfig, parseExpression, extractEntitiesFromExpression, evaluateExpression } from './expression';
 
 
 export interface EnergyEntityConfig extends EntityConfig {
   round?: number;
+  expression?: ExpressionConfig;
 }
 
 const ENERGY_DATA_TIMEOUT = 10000;
@@ -84,7 +86,16 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             electricity_price: null,
             gas_price: null,
           };
-          const stats = await getStatistics(this.hass, data, [this.config.entity], conversions);
+          let entities = [this.config.entity];
+          if (this.config.expression) {
+              const parsed = parseExpression(this.config.expression);
+              if (parsed) {
+                  this.error = parsed;
+              } else {
+                  entities = entities.concat(extractEntitiesFromExpression(this.config.expression));
+              }
+          }
+          const stats = await getStatistics(this.hass, data, entities, conversions);
           const states: HassEntities = {};
           Object.keys(stats).forEach(id => {
             if (this.hass.states[id] && stats[id] !== null) {
@@ -127,7 +138,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                       this.hass!.localize,
                       stateObj,
                       this.hass.locale,
-                      undefined,
+                      this.config.expression ? evaluateExpression(this.config.expression, this.states) : undefined,
                       options,
                     )}
                   </div>
