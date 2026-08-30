@@ -35,15 +35,8 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     this.config = config;
   }
 
-  shouldUpdate(changedProps) {
-    if (
-      changedProps.has('config') ||
-      changedProps.has('states') ||
-      changedProps.has('error')
-    ) {
-      return true;
-    }
-    return false;
+  shouldUpdate() {
+    return true;
   }
 
   public hassSubscribe() {
@@ -103,6 +96,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             }
           });
           this.states = states;
+          this.requestUpdate();
         });
       }),
     ];
