@@ -77,6 +77,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     return [
       energyPromise.then(async collection => {
         return collection.subscribe(async data => {
+          this.error = undefined; // reset to clean state
           // dummy conversions to stay compatible with getStatistics expected args
           // TODO implement conversion
           const conversions: Conversions = {
@@ -101,7 +102,6 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             if (this.hass.states[id] && stats[id] !== null) {
               states[id] = {
                 ...this.hass.states[id],
-                 
                 state: stats[id]!.toString(),
               };
             }
