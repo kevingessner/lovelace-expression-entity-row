@@ -115,6 +115,15 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
 
   render() {
     const stateObj = this.states[this.config.entity];
+    let state: string | undefined = undefined;
+    if (this.config.expression) {
+        const res = evaluateExpression(this.config.expression, this.states);
+        if (res instanceof Error) {
+            this.error = res;
+        } else {
+            state = res.toString();
+        }
+    }
     const options: Intl.NumberFormatOptions = {};
     if (this.config.round !== null) {
       options.maximumFractionDigits = this.config.round ?? 2;
@@ -134,11 +143,10 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                     class="text-content value"
                   >
                     ${computeStateDisplay(
-                       
                       this.hass!.localize,
                       stateObj,
                       this.hass.locale,
-                      this.config.expression ? evaluateExpression(this.config.expression, this.states) : undefined,
+                      state,
                       options,
                     )}
                   </div>
