@@ -3,20 +3,28 @@ import { HassEntities } from 'home-assistant-js-websocket';
 export type ExpressionConfig = string | number | AddExpression | SubtractExpression
 
 interface AddExpression {
-    add: ExpressionConfig[]
+    add: ExpressionConfig[];
 }
 
 interface SubtractExpression {
-    subtract: ExpressionConfig[]
+    subtract: ExpressionConfig[];
 }
 
 type ParseResult = string | null
+
+function isAdd(expr: ExpressionConfig): expr is AddExpression {
+    return (expr as AddExpression).add !== undefined;
+}
+
+function isSubtract(expr: ExpressionConfig): expr is SubtractExpression {
+    return (expr as SubtractExpression).subtract !== undefined;
+}
 
 /**
  * Parse and validate the given expression
  */
 export function parseExpression(expr: ExpressionConfig): ParseResult {
-    return _parseExpression(expr, 'root');
+    return _parseExpression(expr, 'expression');
 }
 
 function _parseExpression(expr: ExpressionConfig, path: string): ParseResult {
@@ -29,18 +37,18 @@ function _parseExpression(expr: ExpressionConfig, path: string): ParseResult {
             }
             return null;
         case 'object':
-            if (expr.add !== undefined) {
+            if (isAdd(expr)) {
                 return _parseExpressionArray(expr.add, `${path}.add`);
             }
-            if (expr.subtract !== undefined) {
+            if (isSubtract(expr)) {
                 if (expr.subtract.length != 2) {
                     return `${path}.subtract: must have exactly 2 elements`;
                 }
                 return _parseExpressionArray(expr.subtract, `${path}.subtract`);
             }
-        default:
-            return `Unknown expression type ${typeof expr}`;
+            break;
     }
+    return `Unknown expression type ${typeof expr}`;
 }
 
 function _parseExpressionArray(exprs: ExpressionConfig[], path: string): ParseResult {
@@ -64,18 +72,19 @@ export function extractEntitiesFromExpression(expr: ExpressionConfig): string[] 
         case 'string':
             return [expr];
         case 'object':
-            if (expr.add !== undefined) {
+            if (isAdd(expr)) {
                 return _extractEntitiesArray(expr.add);
             }
-            if (expr.subtract !== undefined) {
+            if (isSubtract(expr)) {
                 return _extractEntitiesArray(expr.subtract);
             }
+            break;
     }
-    throw new Exception(`bad expr: ${expr}`);
+    throw new Error(`bad expr: ${expr}`);
 }
 
 function _extractEntitiesArray(exprs: ExpressionConfig[]): string[] {
-    let res = [];
+    let res: string[] = [];
     for (let i = 0; i < exprs.length; i++) {
         res = res.concat(extractEntitiesFromExpression(exprs[i]));
     }
@@ -98,12 +107,21 @@ export function evaluateExpression(expr: ExpressionConfig, states: HassEntities)
             if (!isNaN(f)) return f;
             return null;
         case 'object':
-            if (expr.add !== undefined) {
-                return expr.add.reduce((a, b) => evaluateExpression(a) + evaluateExpression(b), 0);
+            if (isAdd(expr)) {
+                let total = 0;
+                for (const e of expr.add) {
+                    const val = evaluateExpression(e, states);
+                    if (val === null) return null;
+                    total += val;
+                }
+                return total;
             }
-            if (expr.subtract !== undefined) {
-                return evaluateExpression(expr.subtract[0], states) - evaluateExpression(expr.subtract[1], states);
+            if (isSubtract(expr)) {
+                const left = evaluateExpression(expr.subtract[0], states);
+                const right = evaluateExpression(expr.subtract[1], states);
+                return left === null || right === null ? null : left - right;
             }
+            break;
     }
-    throw new Exception(`bad expr: ${expr}`);
+    throw new Error(`bad expr: ${expr}`);
 }
