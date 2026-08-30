@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  * This file is imported from ha-sankey-chart and is licensed under
@@ -77,7 +77,7 @@ export interface EnergySource {
   }[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+ 
 export interface DeviceConsumptionEnergyPreference {
   stat_consumption: string;
   name?: string;

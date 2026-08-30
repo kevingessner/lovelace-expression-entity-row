@@ -120,7 +120,7 @@ export const formatNumber = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // Don't fail when using "TEST" language
-      // eslint-disable-next-line no-console
+       
       console.error(err);
       return new Intl.NumberFormat(
         undefined,

@@ -4,7 +4,7 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
 import { PropertyValues, ReactiveElement } from "lit";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 import { property } from "lit/decorators.js";
 
 export interface HassSubscribeElement {
@@ -14,7 +14,7 @@ export interface HassSubscribeElement {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Constructor<T = any> = new (...args: any[]) => T;
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+ 
 export const SubscribeMixin = <T extends Constructor<ReactiveElement>>(
   superClass: T
 ) => {
@@ -54,7 +54,7 @@ export const SubscribeMixin = <T extends Constructor<ReactiveElement>>(
     protected hassUnsubscribe() {
       if (this.__unsubs) {
         while (this.__unsubs.length) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+           
           const unsub = this.__unsubs.pop()!;
           if (unsub instanceof Promise) {
             unsub.then((unsubFunc) => unsubFunc());

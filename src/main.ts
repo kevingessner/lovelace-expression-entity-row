@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, nothing } from "lit";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 import { property, state } from "lit/decorators.js";
 import pjson from "../package.json";
 import { HomeAssistant, EntityConfig } from "custom-card-helpers";
@@ -101,7 +101,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             if (this.hass.states[id] && stats[id] !== null) {
               states[id] = {
                 ...this.hass.states[id],
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                 
                 state: stats[id]!.toString(),
               };
             }
@@ -134,7 +134,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                     class="text-content value"
                   >
                     ${computeStateDisplay(
-                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                       
                       this.hass!.localize,
                       stateObj,
                       this.hass.locale,
