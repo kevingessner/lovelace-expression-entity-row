@@ -1,8 +1,8 @@
 {
-  "name": "energy-entity-row",
+  "name": "expression-entity-row",
   "version": "1.0.0",
   "type": "module",
-  "description": "Lovelace energy entity row to integrate with energy-date-selection",
+  "description": "Lovelace entity row to evaluate expressions with data linked to energy-date-selection",
   "keywords": [
     "home-assistant",
     "homeassistant",
@@ -11,9 +11,9 @@
     "lovelace",
     "energy"
   ],
-  "module": "energy-entity-row.js",
-  "repository": "git@github.com:zeronounours/lovelace-energy-entity-row.git",
-  "author": "Gauthier Sebaux <github@zeronounours.eu>",
+  "module": "expression-entity-row.js",
+  "repository": "git@github.com:kevingessner/lovelace-expression-entity-row.git",
+  "author": "Kevin Gessner <kevin@kevingessner.com>",
   "license": "MIT",
   "dependencies": {
     "custom-card-helpers": "^1.7.2",

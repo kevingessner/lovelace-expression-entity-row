@@ -158,10 +158,10 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
   }
 }
 
-if (!customElements.get("energy-entity-row")) {
-  customElements.define("energy-entity-row", EnergyEntityRow);
+if (!customElements.get("expression-entity-row")) {
+  customElements.define("expression-entity-row", EnergyEntityRow);
   console.info(
-    `%c ENERGY-ENTITY-ROW %c Version ${pjson.version} `,
+    `%c expression-entity-row %c Version ${pjson.version} `,
     'color: orange; font-weight: bold; background: black',
     'color: white; font-weight: bold; background: dimgray',
   );

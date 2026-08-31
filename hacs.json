@@ -1,5 +1,5 @@
 {
-    "name": "Energy Entity row",
+    "name": "Expression Entity row",
     "render_readme": true,
-    "filename": "energy-entity-row.js"
+    "filename": "expression-entity-row.js"
 }

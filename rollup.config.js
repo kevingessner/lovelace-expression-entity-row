@@ -43,7 +43,7 @@ export default [
   {
     input: 'src/main.ts',
     output: {
-      file: './dist/energy-entity-row.js',
+      file: './dist/expression-entity-row.js',
       format: 'es',
     },
     plugins: [...plugins.filter(Boolean)],
