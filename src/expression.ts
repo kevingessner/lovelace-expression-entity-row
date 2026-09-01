@@ -1,24 +1,120 @@
 import { HassEntities } from 'home-assistant-js-websocket';
 
-export type ExpressionConfig = string | number | AddExpression | SubtractExpression
+/** Config types. */
 
-interface AddExpression {
+export type ExpressionConfig = string | number | AddExpressionConfig | SubtractExpressionConfig
+
+interface AddExpressionConfig {
     add: ExpressionConfig[];
 }
 
-interface SubtractExpression {
+interface SubtractExpressionConfig {
     subtract: ExpressionConfig[];
 }
 
-type ParseResult = Error | null
-
-function isAdd(expr: ExpressionConfig): expr is AddExpression {
-    return (expr as AddExpression).add !== undefined;
+function isAdd(expr: ExpressionConfig): expr is AddExpressionConfig {
+    return (expr as AddExpressionConfig).add !== undefined;
 }
 
-function isSubtract(expr: ExpressionConfig): expr is SubtractExpression {
-    return (expr as SubtractExpression).subtract !== undefined;
+function isSubtract(expr: ExpressionConfig): expr is SubtractExpressionConfig {
+    return (expr as SubtractExpressionConfig).subtract !== undefined;
 }
+
+/** Parsed types. */
+
+export interface ParsedExpression {
+    kind: string;
+    path: string;
+    entities(): string[];
+    evaluate(states: HassEntities): number | Error;
+}
+
+class NumberExpression implements ParsedExpression {
+    kind = "number";
+    path: string;
+    private _value: number;
+    constructor(path: string, value: number) {
+        this.path = path;
+        this._value = value;
+    }
+    entities(): string[] {
+        return [];
+    }
+    evaluate(): number | Error {
+        return this._value;
+    }
+}
+
+class EntityIdExpression implements ParsedExpression {
+    kind = "entity_id";
+    path: string;
+    private _entity_id: string;
+    constructor(path: string, entity_id: string) {
+        this.path = path;
+        this._entity_id = entity_id;
+    }
+    entities(): string[] {
+        return [this._entity_id];
+    }
+    evaluate(states: HassEntities): number | Error {
+        if (states[this._entity_id] && states[this._entity_id].state !== undefined) {
+            const f = parseFloat(states[this._entity_id].state);
+            if (!Number.isNaN(f)) return f;
+            return new Error(`bad entity state: ${this._entity_id} = ${states[this._entity_id]}`);
+        }
+        return new Error(`unknown entity: ${this._entity_id}`);
+    }
+}
+
+class AddExpression implements ParsedExpression {
+    kind = "add";
+    path: string;
+    private _sub_exprs: ParsedExpression[];
+    constructor(path: string, sub_exprs: ParsedExpression[]) {
+        this.path = path;
+        this._sub_exprs = sub_exprs;
+    }
+    entities(): string[] {
+        let res: string[] = [];
+        for (let i = 0; i < this._sub_exprs.length; i++) {
+            res = res.concat(this._sub_exprs[i].entities());
+        }
+        return res;
+    }
+    evaluate(states: HassEntities): number | Error {
+        let total = 0;
+        for (const e of this._sub_exprs) {
+            const val = e.evaluate(states);
+            if (val instanceof Error) return val;
+            total += val;
+        }
+        return total;
+    }
+}
+
+class SubtractExpression implements ParsedExpression {
+    kind = "subtract";
+    path: string;
+    private _left: ParsedExpression;
+    private _right: ParsedExpression;
+    constructor(path: string, left: ParsedExpression, right: ParsedExpression) {
+        this.path = path;
+        this._left = left;
+        this._right = right;
+    }
+    entities(): string[] {
+        return this._left.entities().concat(this._right.entities());
+    }
+    evaluate(states: HassEntities): number | Error {
+        const leftResult = this._left.evaluate(states);
+        const rightResult = this._right.evaluate(states);
+        return leftResult instanceof Error ? leftResult :
+            rightResult instanceof Error ? rightResult :
+            leftResult - rightResult;
+    }
+}
+
+type ParseResult = Error | ParsedExpression
 
 /**
  * Parse and validate the given expression
@@ -30,101 +126,48 @@ export function parseExpression(expr: ExpressionConfig): ParseResult {
 function _parseExpression(expr: ExpressionConfig, path: string): ParseResult {
     switch (typeof expr) {
         case 'number':
-            return null;
+            return new NumberExpression(path, expr);
         case 'string':
             if (expr.length == 0) {
                 return new Error(`${path}: zero-length string is not valid`);
             }
-            return null;
+            const f = parseFloat(expr);
+            if (!Number.isNaN(f)) {
+                return new NumberExpression(path, f);
+            }
+            return new EntityIdExpression(path, expr);
         case 'object':
             if (isAdd(expr)) {
-                return _parseExpressionArray(expr.add, `${path}.add`);
+                const subExprs = _parseExpressionArray(expr.add, `${path}.add`);
+                if (subExprs instanceof Error) {
+                    return subExprs;
+                }
+                return new AddExpression(path, subExprs);
             }
             if (isSubtract(expr)) {
-                if (expr.subtract.length != 2) {
+                const subExprs = _parseExpressionArray(expr.subtract, `${path}.subtract`);
+                if (subExprs instanceof Error) {
+                    return subExprs;
+                }
+                if (subExprs.length != 2) {
                     return new Error(`${path}.subtract: must have exactly 2 elements`);
                 }
-                return _parseExpressionArray(expr.subtract, `${path}.subtract`);
+                return new SubtractExpression(path, subExprs[0], subExprs[1]);
             }
             break;
     }
     return new Error(`Unknown expression type ${typeof expr}`);
 }
 
-function _parseExpressionArray(exprs: ExpressionConfig[], path: string): ParseResult {
+function _parseExpressionArray(exprs: ExpressionConfig[], path: string): ParsedExpression[] | Error {
     if (exprs.length == 0) {
         return new Error(`${path}: must have any elements`);
     }
+    const res = [];
     for (let i = 0; i < exprs.length; i++) {
-        const res = _parseExpression(exprs[i], `${path}.${i}`);
-        if (res) return res;
-    }
-    return null;
-}
-
-/**
- * Returns all the entities referenced in the given expression
- */
-export function extractEntitiesFromExpression(expr: ExpressionConfig): string[] {
-    switch (typeof expr) {
-        case 'number':
-            return [];
-        case 'string':
-            return [expr];
-        case 'object':
-            if (isAdd(expr)) {
-                return _extractEntitiesArray(expr.add);
-            }
-            if (isSubtract(expr)) {
-                return _extractEntitiesArray(expr.subtract);
-            }
-            break;
-    }
-    throw new Error(`bad expr: ${expr}`);
-}
-
-function _extractEntitiesArray(exprs: ExpressionConfig[]): string[] {
-    let res: string[] = [];
-    for (let i = 0; i < exprs.length; i++) {
-        res = res.concat(extractEntitiesFromExpression(exprs[i]));
+        const parsed = _parseExpression(exprs[i], `${path}.${i}`);
+        if (parsed instanceof Error) return parsed;
+        res.push(parsed);
     }
     return res;
-}
-
-/**
- * Evaluates the expression with the given entity state values.
- */
-export function evaluateExpression(expr: ExpressionConfig, states: HassEntities): number | Error {
-    switch (typeof expr) {
-        case 'number':
-            return expr;
-        case 'string':
-            const f = parseFloat(expr);
-            if (!Number.isNaN(f)) return f;
-            if (states[expr] && states[expr].state !== undefined) {
-                const f = parseFloat(states[expr].state);
-                if (!Number.isNaN(f)) return f;
-                return new Error(`bad entity state: ${expr} = ${states[expr]}`);
-            }
-            return new Error(`bad string: ${expr}`);
-        case 'object':
-            if (isAdd(expr)) {
-                let total = 0;
-                for (const e of expr.add) {
-                    const val = evaluateExpression(e, states);
-                    if (val instanceof Error) return val;
-                    total += val;
-                }
-                return total;
-            }
-            if (isSubtract(expr)) {
-                const left = evaluateExpression(expr.subtract[0], states);
-                const right = evaluateExpression(expr.subtract[1], states);
-                return left instanceof Error ? left :
-                    right instanceof Error ? right :
-                    left - right;
-            }
-            break;
-    }
-    return new Error(`bad expr: ${expr}`);
 }

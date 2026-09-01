@@ -12,7 +12,7 @@ import { Conversions, EnergyCollection,
 } from './energy';
 import { SubscribeMixin } from './subscribe-mixin';
 import { computeStateDisplay, createEntityNotFoundWarning, createEntityErrorWarning } from './utils';
-import { ExpressionConfig, parseExpression, extractEntitiesFromExpression, evaluateExpression } from './expression';
+import { ExpressionConfig, parseExpression } from './expression';
 
 
 export interface EnergyEntityConfig extends EntityConfig {
@@ -89,12 +89,12 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
           };
           let entities = [this.config.entity];
           if (this.config.expression) {
-              const parsed = parseExpression(this.config.expression);
-              if (parsed) {
-                  this.error = parsed;
-              } else {
-                  entities = entities.concat(extractEntitiesFromExpression(this.config.expression));
-              }
+            const parsed = parseExpression(this.config.expression);
+            if (parsed instanceof Error) {
+              this.error = parsed;
+            } else {
+              entities = entities.concat(parsed.entities());
+            }
           }
           const stats = await getStatistics(this.hass, data, entities, conversions);
           const states: HassEntities = {};
@@ -117,12 +117,17 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     const stateObj = this.states[this.config.entity];
     let state: string | undefined = undefined;
     if (this.config.expression) {
-        const res = evaluateExpression(this.config.expression, this.states);
+      const parsed = parseExpression(this.config.expression);
+      if (parsed instanceof Error) {
+          this.error = parsed;
+      } else {
+        const res = parsed.evaluate(this.states);
         if (res instanceof Error) {
             this.error = res;
         } else {
             state = res.toString();
         }
+      }
     }
     const options: Intl.NumberFormatOptions = {};
     if (this.config.round !== null) {
