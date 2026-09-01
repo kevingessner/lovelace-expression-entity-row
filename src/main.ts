@@ -116,6 +116,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
   render() {
     const stateObj = this.states[this.config.entity];
     let state: string | undefined = undefined;
+    let title: string = '';
     if (this.config.expression) {
       const parsed = parseExpression(this.config.expression);
       if (parsed instanceof Error) {
@@ -126,6 +127,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             this.error = res;
         } else {
             state = res.toString();
+            title = parsed.toString();
         }
       }
     }
@@ -146,6 +148,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                 <hui-generic-entity-row .hass=${this.hass} .config=${this.config}>
                   <div
                     class="text-content value"
+                    title="${title}"
                   >
                     ${computeStateDisplay(
                       this.hass!.localize,

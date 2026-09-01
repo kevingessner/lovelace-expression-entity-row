@@ -1,4 +1,5 @@
 import { HassEntities } from 'home-assistant-js-websocket';
+import { formatNumber } from './utils';
 
 /** Config types. */
 
@@ -43,12 +44,16 @@ class NumberExpression implements ParsedExpression {
     evaluate(): number | Error {
         return this._value;
     }
+    toString(): string {
+        return this._value.toString();
+    }
 }
 
 class EntityIdExpression implements ParsedExpression {
     kind = "entity_id";
     path: string;
     private _entity_id: string;
+    private _cached_value?: string;
     constructor(path: string, entity_id: string) {
         this.path = path;
         this._entity_id = entity_id;
@@ -56,13 +61,22 @@ class EntityIdExpression implements ParsedExpression {
     entities(): string[] {
         return [this._entity_id];
     }
+
     evaluate(states: HassEntities): number | Error {
         if (states[this._entity_id] && states[this._entity_id].state !== undefined) {
             const f = parseFloat(states[this._entity_id].state);
-            if (!Number.isNaN(f)) return f;
+            if (!Number.isNaN(f)) {
+                this._cached_value = formatNumber(f);//f.toString();
+                return f;
+            }
+            this._cached_value = states[this._entity_id].state;
             return new Error(`bad entity state: ${this._entity_id} = ${states[this._entity_id]}`);
         }
+        this._cached_value = '<unknown>';
         return new Error(`unknown entity: ${this._entity_id}`);
+    }
+    toString(): string {
+        return `${this._cached_value ? this._cached_value : "<???>"} [${this._entity_id}]`;
     }
 }
 
@@ -90,6 +104,9 @@ class AddExpression implements ParsedExpression {
         }
         return total;
     }
+    toString(): string {
+        return '(' + this._sub_exprs.map(e => e.toString()).join(' + ') + ')';
+    }
 }
 
 class SubtractExpression implements ParsedExpression {
@@ -111,6 +128,9 @@ class SubtractExpression implements ParsedExpression {
         return leftResult instanceof Error ? leftResult :
             rightResult instanceof Error ? rightResult :
             leftResult - rightResult;
+    }
+    toString(): string {
+        return `(${this._left} - ${this._right})`;
     }
 }
 

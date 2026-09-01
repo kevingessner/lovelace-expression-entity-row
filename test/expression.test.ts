@@ -17,6 +17,7 @@ test('simple expression', () => {
      const parsed = parseExpression(expr);
      expect(parsed).not.toBeInstanceOf(Error);
      expect((parsed as ParsedExpression).evaluate({})).toBe(3);
+     expect((parsed as ParsedExpression).toString()).toEqual('(1 + 2)');
 });
 
 test('expression with errors', () => {
@@ -57,6 +58,7 @@ test('expression with entities', () => {
      }
      const entities = parsed.entities();
      expect(entities).toEqual(['sensor.foo', 'sensor.bar']);
-     const val = parsed.evaluate(makeStates({'sensor.foo': 1.5, 'sensor.bar': 3.2, 'sensor.qaz': 11}));
+     const val = parsed.evaluate(makeStates({'sensor.foo': 1.50001, 'sensor.bar': 3.2, 'sensor.qaz': 11}));
      expect(val).toBeCloseTo(7.7);
+     expect(parsed.toString()).toEqual('((1.5 [sensor.foo] + 3.2 [sensor.bar] + 4) - 1)');
 });
