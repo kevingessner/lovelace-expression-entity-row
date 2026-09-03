@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { LitElement, html, nothing } from "lit";
+import { LitElement, html, nothing, TemplateResult } from "lit";
  
 import { property, state } from "lit/decorators.js";
 import pjson from "../package.json";
@@ -20,6 +20,12 @@ export interface EnergyEntityConfig extends EntityConfig {
   expression?: ExpressionConfig;
 }
 
+declare global {
+  interface HTMLElementEventMap {
+    "ll-custom": CustomEvent;
+  }
+}
+
 const ENERGY_DATA_TIMEOUT = 10000;
 
 class EnergyEntityRow extends SubscribeMixin(LitElement) {
@@ -29,7 +35,12 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
   @state() private states: HassEntities = {};
   @state() private error?: Error;
   @state() private config!: EnergyEntityConfig;
+  @state() private _openDialog: boolean = false;
 
+  constructor() {
+      super();
+      document.body.addEventListener("ll-custom", this._handleCustomEvent);
+  }
   setConfig(config) {
     if (!config) {
       throw new Error("Invalid configuration");
@@ -113,10 +124,22 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     ];
   }
 
+  private _handleCustomEvent = (e: CustomEvent) => {
+      if (e.detail.expression_entity_row && e.detail.expression_entity_row.self === this) {
+          this._openDialog = true;
+          this.requestUpdate();
+      }
+  }
+  private _closeDialog = () => {
+      this._openDialog = false;
+      this.requestUpdate();
+  }
+
   render() {
     const stateObj = this.states[this.config.entity];
     let state: string | undefined = undefined;
     let title: string = '';
+    let dialog: TemplateResult = html``;
     if (this.config.expression) {
       const parsed = parseExpression(this.config.expression);
       if (parsed instanceof Error) {
@@ -128,6 +151,16 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
         } else {
             state = res.toString();
             title = parsed.toString();
+            dialog = html`
+                <ha-adaptive-dialog
+                  .hass=${this.hass}
+                  .open=${this._openDialog}
+                  header-title="Expression for ${this.config.name || stateObj.attributes.friendly_name || stateObj.entity_id}"
+                  @closed=${this._closeDialog}
+                >
+                  <div>${title}</div>
+                </ha-adaptive-dialog>
+            `;
         }
       }
     }
@@ -135,6 +168,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     if (this.config.round !== null) {
       options.maximumFractionDigits = this.config.round ?? 2;
     }
+    const rowConfig = { ...this.config, tap_action: { action: "fire-dom-event", expression_entity_row: { self: this } } };
 
     return html`
       <div>
@@ -145,7 +179,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             : (!stateObj)
               ? html`<hui-warning>${createEntityNotFoundWarning(this.hass, this.config.entity)}</hui-warning>`
               : html`
-                <hui-generic-entity-row .hass=${this.hass} .config=${this.config}>
+                <hui-generic-entity-row .hass=${this.hass} .config=${rowConfig}>
                   <div
                     class="text-content value"
                     title="${title}"
@@ -159,6 +193,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                     )}
                   </div>
                 </hui-generic-entity-row>
+                ${dialog}
               `
         }
       </div>
