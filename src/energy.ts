@@ -155,7 +155,7 @@ const fetchStatistics = (
   period: "5minute" | "hour" | "day" | "week" | "month" = "hour",
   // units?: StatisticsUnitConfiguration
   types?: StatisticsTypes
-) =>
+): Promise<Statistics> =>
   hass.callWS<Statistics>({
     type: "recorder/statistics_during_period",
     start_time: startTime.toISOString(),
@@ -177,7 +177,7 @@ const fetchFossilEnergyConsumption = (
   co2_statistic_id: string,
   endTime?: Date,
   period: "5minute" | "hour" | "day" | "month" = "hour"
-) =>
+): Promise<FossilEnergyConsumption> =>
   hass.callWS<FossilEnergyConsumption>({
     type: "energy/fossil_energy_consumption",
     start_time: startTime.toISOString(),
@@ -230,7 +230,7 @@ const calculateStatisticSumGrowth = (
   return sum;
 };
 
-export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<EnergyData, 'start' | 'end'>, devices: string[], conversions: Conversions): Promise<Record<string, number>> {
+export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<EnergyData, 'start' | 'end'>, devices: string[], conversions: Conversions): Promise<Record<string, number|null>> {
   const dayDifference = differenceInDays(
     end || new Date(),
     start
@@ -238,7 +238,7 @@ export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<En
   const period = dayDifference > 35 ? "month" : dayDifference > 2 ? "day" : "hour";
 
   let time_invariant_devices: string[] = [];
-  const time_variant_data = {};
+  const time_variant_data: Record<string, Promise<FossilEnergyConsumption>> = {};
   if (conversions.convert_units_to == 'gCO2' || conversions.convert_units_to == "gCO2eq") {
     for (const id of devices) {
       if (hass.states[id].attributes.unit_of_measurement == "Wh" ||
@@ -264,7 +264,7 @@ export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<En
     time_invariant_devices = devices;
   }
 
-  let time_invariant_data = {};
+  let time_invariant_data: Statistics = {};
   if (time_invariant_devices.length > 0) {
     time_invariant_data = await fetchStatistics(
       hass,
@@ -277,7 +277,7 @@ export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<En
     );
   }
 
-  const result = {};
+  const result: Record<string, number|null> = {};
 
   for (const id in time_variant_data) {
     const scale = 100;  // API assumes co2_statistic_id is fossil fuel percentage [0-100], so it divides by 100, which we must undo
