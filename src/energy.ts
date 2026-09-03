@@ -105,9 +105,12 @@ export interface EnergyCollection extends Collection<EnergyData> {
 }
 
 export const getEnergyDataCollection = (
-  hass: HomeAssistant,
+  hass?: HomeAssistant,
   collectionKey?: string,
 ): EnergyCollection | null => {
+  if (!hass) {
+      return null;
+  }
   const conn = hass.connection as any;
   const isCollection = (obj: any) => obj && typeof obj.subscribe === 'function';
 

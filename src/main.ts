@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, nothing, TemplateResult } from "lit";
- 
-import { property, state } from "lit/decorators.js";
+import { state } from "lit/decorators.js";
 import pjson from "../package.json";
-import { HomeAssistant, EntityConfig } from "custom-card-helpers";
+import { EntityConfig } from "custom-card-helpers";
 import { HassEntities } from 'home-assistant-js-websocket';
 
 import { Conversions, EnergyCollection,
@@ -30,7 +29,6 @@ const ENERGY_DATA_TIMEOUT = 10000;
 
 class EnergyEntityRow extends SubscribeMixin(LitElement) {
 
-  @property({ attribute: false }) public hass!: HomeAssistant;
 
   @state() private states: HassEntities = {};
   @state() private error?: Error;
@@ -41,11 +39,12 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
       super();
       document.body.addEventListener("ll-custom", this._handleCustomEvent);
   }
-  setConfig(config) {
-    if (!config) {
-      throw new Error("Invalid configuration");
-    }
-    this.config = config;
+
+  setConfig(config?: EnergyEntityConfig) {
+      if (!config) {
+          throw new Error("Invalid configuration");
+      }
+      this.config = config;
   }
 
   shouldUpdate() {
@@ -63,6 +62,10 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
       resolve: (value: EnergyCollection | PromiseLike<EnergyCollection>) => void,
       reject: (reason?: any) => void,
     ) => {
+      if (!this.hass) {
+          reject(new Error('no hass'));
+          return;
+      }
       const energyCollection = getEnergyDataCollection(this.hass);
       if (energyCollection) {
         resolve(energyCollection);
@@ -107,12 +110,12 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
               entities = entities.concat(parsed.entities());
             }
           }
-          const stats = await getStatistics(this.hass, data, entities, conversions);
+          const stats = await getStatistics(this.hass!, data, entities, conversions);
           const states: HassEntities = {};
           Object.keys(stats).forEach(id => {
-            if (this.hass.states[id] && stats[id] !== null) {
+            if (this.hass!.states[id] && stats[id] !== null) {
               states[id] = {
-                ...this.hass.states[id],
+                ...this.hass!.states[id],
                 state: stats[id]!.toString(),
               };
             }
