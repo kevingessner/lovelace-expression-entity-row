@@ -2,7 +2,7 @@
 import { LitElement, html, nothing, TemplateResult } from "lit";
 import { state } from "lit/decorators.js";
 import pjson from "../package.json";
-import { EntityConfig } from "custom-card-helpers";
+import { EntityConfig, EntitiesCardEntityConfig, CustomActionConfig } from "custom-card-helpers";
 import { HassEntities } from 'home-assistant-js-websocket';
 
 import { Conversions, EnergyCollection,
@@ -147,6 +147,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     let state: string | undefined = undefined;
     let title: string = '';
     let dialog: TemplateResult = html``;
+    const rowConfig: EntitiesCardEntityConfig = { ...this.config };
     if (this.config.expression && !this._loading) {
       const parsed = parseExpression(this.config.expression);
       if (parsed instanceof Error) {
@@ -168,6 +169,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
                   <div>${title}</div>
                 </ha-adaptive-dialog>
             `;
+            rowConfig.tap_action = { action: "fire-dom-event", expression_entity_row: { self: this } } as CustomActionConfig;
         }
       }
     }
@@ -175,7 +177,6 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     if (this.config.round !== null) {
       options.maximumFractionDigits = this.config.round ?? 2;
     }
-    const rowConfig = { ...this.config, tap_action: { action: "fire-dom-event", expression_entity_row: { self: this } } };
 
     return html`
       <div>
