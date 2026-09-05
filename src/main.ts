@@ -34,12 +34,14 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
   @state() private error?: Error;
   @state() private config!: EnergyEntityConfig;
   @state() private _openDialog: boolean = false;
+  @state() private _loading: boolean = true;
 
   constructor() {
       super();
       document.body.addEventListener("ll-custom", this._handleCustomEvent);
   }
 
+  /** Used by HA's custom element machinery. */
   setConfig(config?: EnergyEntityConfig) {
       if (!config) {
           throw new Error("Invalid configuration");
@@ -87,6 +89,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     }, ENERGY_DATA_TIMEOUT * 2);
     energyPromise.catch(err => {
       this.error = err;
+      this._loading = false;
     });
     return [
       energyPromise.then(async collection => {
@@ -121,6 +124,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
             }
           });
           this.states = states;
+          this._loading = false;
           this.requestUpdate();
         });
       }),
@@ -143,7 +147,7 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
     let state: string | undefined = undefined;
     let title: string = '';
     let dialog: TemplateResult = html``;
-    if (this.config.expression) {
+    if (this.config.expression && !this._loading) {
       const parsed = parseExpression(this.config.expression);
       if (parsed instanceof Error) {
           this.error = parsed;
@@ -180,7 +184,9 @@ class EnergyEntityRow extends SubscribeMixin(LitElement) {
           : (!!this.error)
             ? html`<hui-warning>${createEntityErrorWarning(this.error, this.config.entity)}</hui-warning>`
             : (!stateObj)
-              ? html`<hui-warning>${createEntityNotFoundWarning(this.hass, this.config.entity)}</hui-warning>`
+              ? ((this._loading)
+                ? html`<ha-spinner size="tiny"></ha-spinner>`
+                : html`<hui-warning>${createEntityNotFoundWarning(this.hass, this.config.entity)}</hui-warning>`)
               : html`
                 <hui-generic-entity-row .hass=${this.hass} .config=${rowConfig}>
                   <div
