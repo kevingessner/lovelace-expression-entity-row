@@ -35,11 +35,18 @@ in the view
     - entity: sensor.all_plug_energy
     - entity: sensor.all_heating_energy
     - type: section
-      label: With Energy Entity Row
+      label: With Expression Entity Row
     - type: custom:expression-entity-row
       entity: sensor.all_plug_energy
     - type: custom:expression-entity-row
       entity: sensor.all_heating_energy
+    - type: custom:expression-entity-row
+      name: All energy
+      entity: sensor.all_heating_energy # defines display formatting
+      expression:
+        add:
+          - sensor.all_heating_energy
+          - sensor.all_plug_energy
 ```
 
 
@@ -47,6 +54,10 @@ in the view
 
 The following options can be added to the element:
 - `round`: number of decimal to round number (default to 2). To display all decimal digits, explicitly set this option to `null`
+- `expression`: calculate a value instead of using the defined entity's state.
+  An expression is a literal number, an entity ID (which will be resolved to its state value), or a compound expression.
+  A compound expression `add` or `subtract` contains a list of expressions, which can themselves be numbers, entities,
+  or other compound expressions.
 
 In addition, all basic options can be used:
 - `entity` (**required**)
