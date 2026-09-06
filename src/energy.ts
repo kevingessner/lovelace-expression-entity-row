@@ -235,7 +235,8 @@ export async function getStatistics(hass: HomeAssistant, { start, end }: Pick<En
     end || new Date(),
     start
   );
-  const period = dayDifference > 35 ? "month" : dayDifference > 2 ? "day" : "hour";
+  // 5minute stats are the freshest, so use them when we are looking at just today's partial data.
+  const period = dayDifference > 35 ? "month" : (dayDifference > 2 ? "day" : (!end || end > new Date ? "5minute" : "hour"));
 
   let time_invariant_devices: string[] = [];
   const time_variant_data: Record<string, Promise<FossilEnergyConsumption>> = {};
